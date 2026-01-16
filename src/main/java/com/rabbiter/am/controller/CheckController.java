@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin
 @RestController
@@ -65,6 +66,20 @@ public class CheckController {
     public Result getTodayCheckStatus(@RequestBody Check check) {
         Check todayCheck = checkService.getTodayCheckStatus(check);
         return Result.success(todayCheck);
+    }
+
+    /**
+     * 获取月度考勤状态（用于日历显示）
+     * @param params 包含 employeeID 和 month（格式：yyyy-MM）
+     * @return 月度考勤状态Map，key为日期（yyyy-MM-dd），value为状态（NORMAL/ABNORMAL/INCOMPLETE/NO_RECORD）
+     */
+    @ResponseBody
+    @RequestMapping(value = "/getMonthlyStatus", method = RequestMethod.POST)
+    public Result getMonthlyStatus(@RequestBody Map<String, String> params) {
+        String employeeID = params.get("employeeID");
+        String month = params.get("month"); // 格式：yyyy-MM
+        Map<String, String> statusMap = checkService.getMonthlyCheckStatus(employeeID, month);
+        return Result.success(statusMap);
     }
 
     @ResponseBody

@@ -125,6 +125,14 @@
     where a.employeeID = #{number}
   </select>
 
+  <select id="findByNumberAndMonth" parameterType="com.rabbiter.am.entity.Check" resultType="com.rabbiter.am.entity.Check">
+    select
+    <include refid="Base_Column_List" />
+    from check1 a
+    where a.employeeID = #{employeeID} and a.date like CONCAT(#{date}, '%')
+    order by a.date
+  </select>
+
   <select id="getCheckDay" parameterType="com.rabbiter.am.entity.Check" resultType="com.rabbiter.am.entity.Check">
     select
     <include refid="Base_Column_List" />

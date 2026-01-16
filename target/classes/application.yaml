@@ -7,8 +7,12 @@ spring:
   jackson:
     time-zone: GMT+8
 
-mybatis:
-  mapperLocations: classpath:com/rabbiter/am/mapper/*.xml
+mybatis-plus:
+  mapper-locations: classpath:com/rabbiter/am/mapper/*.xml
+  type-aliases-package: com.rabbiter.am.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 logging:
   level:
     com.rabbiter.am.dao: debug

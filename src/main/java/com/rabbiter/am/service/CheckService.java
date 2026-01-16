@@ -9,10 +9,7 @@ import org.springframework.util.ObjectUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class CheckService {
@@ -323,5 +320,122 @@ public class CheckService {
         String date = sdf.format(check.getCheckOnTime() != null ? check.getCheckOnTime() : new Date());
         check.setDate(date);
         return findByNumberAndDate(check);
+    }
+
+    /**
+     * 获取月度考勤状态（用于日历显示）
+     * @param employeeID 员工工号
+     * @param month 月份（格式：yyyy-MM）
+     * @return 状态Map，key为日期（yyyy-MM-dd），value为状态
+     *         NORMAL - 正常打卡（绿色）
+     *         ABNORMAL - 异常打卡，迟到或早退（红色）
+     *         INCOMPLETE - 未完成打卡，只打了上班或下班（红色）
+     *         NO_RECORD - 无打卡记录（红色）
+     */
+    public Map<String, String> getMonthlyCheckStatus(String employeeID, String month) {
+        Map<String, String> statusMap = new HashMap<>();
+        
+        try {
+            // 解析月份
+            SimpleDateFormat monthFormat = new SimpleDateFormat("yyyy-MM");
+            Date monthDate = monthFormat.parse(month);
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(monthDate);
+            
+            // 获取该月的所有工作日（1号到最后一天）
+            int year = calendar.get(Calendar.YEAR);
+            int monthNum = calendar.get(Calendar.MONTH);
+            calendar.set(year, monthNum, 1);
+            int maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+            
+            // 获取当前日期（用于判断是否是今天及以前）
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            
+            // 查询该月的所有打卡记录
+            Check queryCheck = new Check();
+            queryCheck.setEmployeeID(employeeID);
+            queryCheck.setDate(month); // 月份作为查询条件
+            List<Check> monthChecks = checkDao.findByNumberAndMonth(queryCheck);
+            
+            // 将打卡记录转换为 Map，key 为日期字符串
+            Map<String, Check> checkMap = new HashMap<>();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            for (Check check : monthChecks) {
+                if (check.getDate() != null) {
+                    String dateStr = check.getDate();
+                    checkMap.put(dateStr, check);
+                }
+            }
+            
+            // 遍历该月的每一天（只到今天为止）
+            for (int day = 1; day <= maxDay; day++) {
+                calendar.set(year, monthNum, day);
+                Date currentDate = calendar.getTime();
+                
+                // 只处理今天及以前的日期
+                if (currentDate.after(today.getTime())) {
+                    break;
+                }
+                
+                // 跳过周末（可选，根据需求）
+                int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+                // 如果需要跳过周末，取消下面的注释
+                // if (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY) {
+                //     continue;
+                // }
+                
+                String dateStr = dateFormat.format(currentDate);
+                Check check = checkMap.get(dateStr);
+                
+                // 判断今天是否是当前日期
+                boolean isToday = dateFormat.format(today.getTime()).equals(dateStr);
+                
+                if (check == null) {
+                    // 无打卡记录
+                    statusMap.put(dateStr, "NO_RECORD");
+                } else {
+                    // 有打卡记录，判断状态
+                    boolean hasCheckOn = check.getCheckOnTime() != null && !check.getCheckOnTime().toString().isEmpty();
+                    boolean hasCheckOff = check.getCheckOffTime() != null && !check.getCheckOffTime().toString().isEmpty();
+                    boolean isLate = "迟到".equals(check.getCheckOnStatus());
+                    boolean isEarlyLeave = "早退".equals(check.getCheckOffStatus());
+                    
+                    if (isToday) {
+                        // 今天的特殊处理
+                        if (!hasCheckOn || !hasCheckOff) {
+                            // 今天未完成打卡
+                            statusMap.put(dateStr, "INCOMPLETE");
+                        } else if (isLate || isEarlyLeave) {
+                            // 今天打卡异常
+                            statusMap.put(dateStr, "ABNORMAL");
+                        } else {
+                            // 今天正常打卡
+                            statusMap.put(dateStr, "NORMAL");
+                        }
+                    } else {
+                        // 历史日期
+                        if (!hasCheckOn || !hasCheckOff) {
+                            // 未完成打卡
+                            statusMap.put(dateStr, "INCOMPLETE");
+                        } else if (isLate || isEarlyLeave) {
+                            // 打卡异常
+                            statusMap.put(dateStr, "ABNORMAL");
+                        } else {
+                            // 正常打卡
+                            statusMap.put(dateStr, "NORMAL");
+                        }
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return statusMap;
     }
 }
