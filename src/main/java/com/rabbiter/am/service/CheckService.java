@@ -64,6 +64,40 @@ public class CheckService {
         return 0;
     }
 
+    /**
+     * 上班打卡并返回打卡状态
+     * @param check 打卡信息
+     * @return 包含打卡状态的Check对象
+     * @throws ParseException 日期解析异常
+     */
+    public Check checkOnWithStatus(Check check) throws ParseException {
+        if(ObjectUtils.isEmpty(check.getEmployeeID())) {
+            return null;
+        }
+        check.setId(UUID.randomUUID().toString());
+        SimpleDateFormat sdf1 =new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf2 =new SimpleDateFormat("HH:mm:ss");
+        String date1 = sdf1.format(check.getCheckOnTime());
+        check.setDate(date1);
+        String date2 = sdf2.format(check.getCheckOnTime());
+        Date time = sdf2.parse(date2);
+        String time1 = onTime + ":00";
+        Date time2;
+        try {
+            time2 = sdf2.parse(time1);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            time2 = sdf2.parse("08:30:00");
+        }
+        if(time.before(time2)){
+            check.setCheckOnStatus("正常");
+        }else {
+            check.setCheckOnStatus("迟到");
+        }
+        checkDao.insert(check);
+        return check;
+    }
+
     public int checkOff(Check check) throws ParseException {
         if(ObjectUtils.isEmpty(check.getEmployeeID())) {
             return 0;
@@ -92,6 +126,42 @@ public class CheckService {
         check2.setCheckOffTime(check.getCheckOffTime());
         checkDao.update(check2);
         return 0;
+    }
+
+    /**
+     * 下班打卡并返回打卡状态
+     * @param check 打卡信息
+     * @return 包含打卡状态的Check对象
+     * @throws ParseException 日期解析异常
+     */
+    public Check checkOffWithStatus(Check check) throws ParseException {
+        if(ObjectUtils.isEmpty(check.getEmployeeID())) {
+            return null;
+        }
+        SimpleDateFormat sdf1 =new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf2 =new SimpleDateFormat("HH:mm:ss");
+        String date1 = sdf1.format(check.getCheckOffTime());
+        Check check1 = new Check();
+        check1.setEmployeeID(check.getEmployeeID());
+        check1.setDate(date1);
+        Check check2 = findByNumberAndDate(check1);
+        String date2 = sdf2.format(check.getCheckOffTime());
+        Date time = sdf2.parse(date2);
+        String time1 = offTime + ":00";
+        Date time2 = null;
+        try {
+            time2 = sdf2.parse(time1);
+        } catch (ParseException e) {
+            time2 = sdf2.parse("17:30:00");
+        }
+        if(time.after(time2)){
+            check2.setCheckOffStatus("正常");
+        }else {
+            check2.setCheckOffStatus("早退");
+        }
+        check2.setCheckOffTime(check.getCheckOffTime());
+        checkDao.update(check2);
+        return check2;
     }
 
     public int getCheckOn(Check check){
@@ -241,5 +311,17 @@ public class CheckService {
             }
         }
         return days;
+    }
+
+    /**
+     * 获取今天的打卡状态（包含迟到/早退信息）
+     * @param check 包含员工ID和日期
+     * @return 今天的打卡记录，包含打卡状态
+     */
+    public Check getTodayCheckStatus(Check check) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String date = sdf.format(check.getCheckOnTime() != null ? check.getCheckOnTime() : new Date());
+        check.setDate(date);
+        return findByNumberAndDate(check);
     }
 }

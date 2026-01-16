@@ -3,6 +3,7 @@ package com.rabbiter.am.controller;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.metadata.Sheet;
 import com.alibaba.excel.support.ExcelTypeEnum;
+import com.rabbiter.am.config.Result;
 import com.rabbiter.am.entity.Check;
 import com.rabbiter.am.entity.Employee;
 import com.rabbiter.am.entity.ExportCheck;
@@ -30,14 +31,16 @@ public class CheckController {
 
     @ResponseBody
     @RequestMapping(value = "/checkOn",method = RequestMethod.POST)
-    public int checkOn(@RequestBody Check check) throws ParseException {
-        return checkService.checkOn(check);
+    public Result checkOn(@RequestBody Check check) throws ParseException {
+        Check result = checkService.checkOnWithStatus(check);
+        return Result.success(result);
     }
 
     @ResponseBody
     @RequestMapping(value = "/checkOff",method = RequestMethod.POST)
-    public int checkOff(@RequestBody Check check) throws ParseException {
-        return checkService.checkOff(check);
+    public Result checkOff(@RequestBody Check check) throws ParseException {
+        Check result = checkService.checkOffWithStatus(check);
+        return Result.success(result);
     }
 
     @ResponseBody
@@ -50,6 +53,18 @@ public class CheckController {
     @RequestMapping(value = "/getCheckOff",method = RequestMethod.POST)
     public int getCheckOff(@RequestBody Check check) {
         return checkService.getCheckOff(check);
+    }
+
+    /**
+     * 获取今天的打卡状态（包含迟到/早退信息）
+     * @param check 包含员工ID和日期
+     * @return 今天的打卡记录
+     */
+    @ResponseBody
+    @RequestMapping(value = "/getTodayCheckStatus",method = RequestMethod.POST)
+    public Result getTodayCheckStatus(@RequestBody Check check) {
+        Check todayCheck = checkService.getTodayCheckStatus(check);
+        return Result.success(todayCheck);
     }
 
     @ResponseBody
