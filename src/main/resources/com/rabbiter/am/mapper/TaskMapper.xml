@@ -156,7 +156,10 @@
   </select>
 
   <select id="findByApplyID" resultType="com.rabbiter.am.entity.Apply" parameterType="com.rabbiter.am.entity.Task" >
-    select a.id,a.taskTypeID
+    select a.id
+    <if test="type != '补卡申请'">
+      ,a.taskTypeID
+    </if>
     <if test="type == '请假申请'">
       ,a.beginTime,a.endTime,a.reason,a.applyNumber,a.duration,a.status,a.approvalID,a.applyTime
       <if test="status == 1 or status == 2">
@@ -185,6 +188,26 @@
       </if>
       where a.id = #{applyID}
     </if>
+    <if test="type == '补卡申请'">
+      ,'4' as taskTypeID
+      ,a.employee_number as employeeNumber
+      ,a.employee_name as employeeName
+      ,a.check_id as checkId
+      ,a.check_date as checkDate
+      ,a.abnormal_type as abnormalType
+      ,a.reason
+      ,a.apply_time as applyTime
+      ,a.status
+      <if test="status == 1 or status == 2">
+        ,a.approval_employee_number as approvalEmployeeNumber
+        ,a.approval_employee_name as approvalEmployeeName
+        ,a.approval_time as approvalTime
+        ,a.approval_remarks as approvalRemarks
+      </if>
+      ,(select name from tasktype e where '4' = e.id) as type
+      from makeup_card a
+      where a.id = #{applyID}
+    </if>
   </select>
 
   <select id="getAll" resultType="com.rabbiter.am.entity.Task">
@@ -192,5 +215,13 @@
     <include refid="Base_Column_List" />
     ,(select employeeName from employee b where a.applyNumber = b.employeeNumber) as applyName
     from task a where a.receiveNumber = #{receiveNumber}
+  </select>
+
+  <select id="getByApplyNumber" resultType="com.rabbiter.am.entity.Task">
+    select
+    <include refid="Base_Column_List" />
+    ,(select name from tasktype c where a.typeID = c.id) as type
+    from task a where a.applyNumber = #{applyNumber}
+    ORDER BY a.applyTime DESC
   </select>
 </mapper>

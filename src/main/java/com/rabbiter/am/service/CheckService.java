@@ -28,6 +28,13 @@ public class CheckService {
         return checkDao.deleteById(id);
     }
 
+    /**
+     * 根据ID查询打卡记录
+     */
+    public Check selectById(String id) {
+        return checkDao.selectById(id);
+    }
+
     public int insert(Check check) {
         return checkDao.insert(check);
     }
@@ -193,10 +200,6 @@ public class CheckService {
         }else {
             return 0;
         }
-    }
-
-    public Check selectById(String id) {
-        return checkDao.selectById(id);
     }
 
     public int update(Check check) {
@@ -437,5 +440,30 @@ public class CheckService {
         }
         
         return statusMap;
+    }
+
+    /**
+     * 获取异常打卡记录（用于补卡申请）
+     * 返回迟到或早退的打卡记录
+     */
+    public List<Check> getAbnormalRecords(Check check) {
+        // 修复：前端传的是 month 字段，需要赋值给 date 字段用于SQL查询
+        if (check.getMonth() != null && !check.getMonth().isEmpty()) {
+            check.setDate(check.getMonth());
+        }
+        
+        List<Check> allRecords = checkDao.findByNumberAndMonth(check);
+        List<Check> abnormalRecords = new ArrayList<>();
+        
+        for (Check record : allRecords) {
+            boolean isLate = "迟到".equals(record.getCheckOnStatus());
+            boolean isEarlyLeave = "早退".equals(record.getCheckOffStatus());
+            
+            if (isLate || isEarlyLeave) {
+                abnormalRecords.add(record);
+            }
+        }
+        
+        return abnormalRecords;
     }
 }

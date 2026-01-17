@@ -24,4 +24,9 @@ public interface TaskDao {
     Apply findByApplyID(Task task);
 
     List<Task> getAll(@Param("receiveNumber")String receiveNumber);
+    
+    /**
+     * 根据申请人工号查询任务列表
+     */
+    List<Task> getByApplyNumber(@Param("applyNumber")String applyNumber);
 }

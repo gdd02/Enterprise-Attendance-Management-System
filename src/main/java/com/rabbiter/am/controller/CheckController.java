@@ -153,6 +153,18 @@ public class CheckController {
         return checkList;
     }
 
+    /**
+     * 获取异常打卡记录（用于补卡申请）
+     * @param check 包含员工ID和月份
+     * @return 异常打卡记录列表
+     */
+    @ResponseBody
+    @RequestMapping(value = "/getAbnormalRecords", method = RequestMethod.POST)
+    public Result getAbnormalRecords(@RequestBody Check check) {
+        List<Check> abnormalRecords = checkService.getAbnormalRecords(check);
+        return Result.success(abnormalRecords);
+    }
+
     @RequestMapping(value = "/exportExcel",method = RequestMethod.GET)
     public void export(HttpServletResponse response,@RequestParam String month) throws IOException {
         Check check = new Check();

@@ -3,7 +3,7 @@
 <mapper namespace="com.rabbiter.am.dao.CheckDao" >
   <resultMap id="BaseResultMap" type="com.rabbiter.am.entity.Check" >
     <id column="id" property="id" jdbcType="VARCHAR" />
-    <result column="employeeID" property="employeeid" jdbcType="VARCHAR" />
+    <result column="employeeID" property="employeeID" jdbcType="VARCHAR" />
     <result column="date" property="date" jdbcType="VARCHAR" />
     <result column="remarks" property="remarks" jdbcType="VARCHAR" />
     <result column="checkOnTime" property="checkOnTime" jdbcType="TIMESTAMP" />

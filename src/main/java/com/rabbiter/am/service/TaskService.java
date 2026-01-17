@@ -1,7 +1,9 @@
 package com.rabbiter.am.service;
 
+import com.rabbiter.am.dao.CheckDao;
 import com.rabbiter.am.dao.FixedassetsDao;
 import com.rabbiter.am.dao.LeaveDao;
+import com.rabbiter.am.dao.MakeupCardDao;
 import com.rabbiter.am.dao.TaskDao;
 import com.rabbiter.am.entity.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,10 @@ public class TaskService {
     private LeaveTypeService leaveTypeService;
     @Autowired
     private FixedassetTypeService fixedassetTypeService;
+    @Autowired
+    private MakeupCardDao makeupCardDao;
+    @Autowired
+    private CheckDao checkDao;
 
     public int deleteById(String id) {
         return taskDao.deleteById(id);
@@ -120,6 +126,60 @@ public class TaskService {
                 fixedassetsDao.update(fixedassets);
                 FixedassetType fixedassetType = fixedassetTypeService.selectById(fixedassets.getTypeID());
                 fixedassetType.setQuantity(fixedassetType.getQuantity()+1);
+            }else if(type.equals("补卡申请")){
+                // 补卡申请审批通过，更新makeup_card表的状态并恢复打卡记录为正常
+                com.rabbiter.am.entity.MakeupCard makeupCard = makeupCardDao.selectById(apply.getId());
+                if (makeupCard != null) {
+                    makeupCard.setStatus("APPROVED");
+                    makeupCard.setApprovalEmployeeNumber(task.getApprovalNumber());
+                    makeupCard.setApprovalTime(task.getApprovalTime());
+                    makeupCardDao.update(makeupCard);
+                    
+                    // 恢复打卡记录为正常状态
+                    String checkId = makeupCard.getCheckId();
+                    if (checkId != null && !checkId.isEmpty()) {
+                        com.rabbiter.am.entity.Check checkRecord = checkDao.selectById(checkId);
+                        if (checkRecord != null) {
+                            String abnormalType = makeupCard.getAbnormalType();
+                            
+                            // 根据异常类型恢复对应的状态和时间
+                            try {
+                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                String dateStr = checkRecord.getDate() + " "; // 获取日期部分
+                                
+                                if ("LATE".equals(abnormalType)) {
+                                    // 只有迟到，修改上班打卡时间为08:20，状态改为"正常"
+                                    checkRecord.setCheckOnTime(sdf.parse(dateStr + "08:20:00"));
+                                    checkRecord.setCheckOnStatus("正常");
+                                } else if ("EARLY".equals(abnormalType)) {
+                                    // 只有早退，修改下班打卡时间为17:40，状态改为"正常"
+                                    checkRecord.setCheckOffTime(sdf.parse(dateStr + "17:40:00"));
+                                    checkRecord.setCheckOffStatus("正常");
+                                } else if ("BOTH".equals(abnormalType)) {
+                                    // 既迟到又早退，修改两个时间和状态
+                                    checkRecord.setCheckOnTime(sdf.parse(dateStr + "08:20:00"));
+                                    checkRecord.setCheckOnStatus("正常");
+                                    checkRecord.setCheckOffTime(sdf.parse(dateStr + "17:40:00"));
+                                    checkRecord.setCheckOffStatus("正常");
+                                }
+                                
+                                checkDao.update(checkRecord);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                // 如果时间解析失败，至少更新状态
+                                if ("LATE".equals(abnormalType)) {
+                                    checkRecord.setCheckOnStatus("正常");
+                                } else if ("EARLY".equals(abnormalType)) {
+                                    checkRecord.setCheckOffStatus("正常");
+                                } else if ("BOTH".equals(abnormalType)) {
+                                    checkRecord.setCheckOnStatus("正常");
+                                    checkRecord.setCheckOffStatus("正常");
+                                }
+                                checkDao.update(checkRecord);
+                            }
+                        }
+                    }
+                }
             }
             return 0;
         }else if(task.getAdvice().equals("no")){
@@ -133,6 +193,16 @@ public class TaskService {
                 Fixedassets fixedassets = fixedassetsDao.selectById(apply.getId());
                 fixedassets.setStatus("2");
                 fixedassetsDao.update(fixedassets);
+            }else if(type.equals("补卡申请")){
+                // 补卡申请驳回，更新makeup_card表的状态（不恢复打卡记录）
+                com.rabbiter.am.entity.MakeupCard makeupCard = makeupCardDao.selectById(apply.getId());
+                if (makeupCard != null) {
+                    makeupCard.setStatus("REJECTED");
+                    makeupCard.setApprovalEmployeeNumber(task.getApprovalNumber());
+                    makeupCard.setApprovalTime(task.getApprovalTime());
+                    makeupCardDao.update(makeupCard);
+                    // 驳回的情况下，打卡记录保持异常状态不变
+                }
             }
             return 0;
         }else {
